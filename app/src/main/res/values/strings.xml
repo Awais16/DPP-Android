@@ -6,4 +6,5 @@
 
     <string name="labelXleroGraph">Acceleration</string>
     <string name="labelGasChart">CO + CO2</string>
+    <string name="labelTempChart">Temperature</string>
 </resources>
