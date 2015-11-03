@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">DPP-Android</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="labelXleroGraph">Acceleration</string>
+    <string name="labelGasChart">CO + CO2</string>
+</resources>
