@@ -67,7 +67,6 @@ public class DppGraphs {
 
         // add empty data
         xleroChart.setData(data);
-
         Typeface tf = Typeface.createFromAsset(ctx.getAssets(), "OpenSans-Regular.ttf");
 
         // get the legend (only possible after setting data)
