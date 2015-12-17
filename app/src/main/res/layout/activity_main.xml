@@ -9,7 +9,21 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" android:orientation="vertical">
 
-    <com.github.mikephil.charting.charts.LineChart
+        <ExpandableListView android:id="@+id/gatt_services_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="Start Recording" android:id="@+id/bt_start"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Status:"
+            android:id="@+id/tv_status" />
+
+        <com.github.mikephil.charting.charts.LineChart
         android:id="@+id/accel_chart"
         android:layout_width="match_parent"
         android:layout_height="300dp" />
@@ -38,6 +52,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
             android:text="@string/labelTempChart" />
+
 
     </LinearLayout>
 
