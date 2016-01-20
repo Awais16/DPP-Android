@@ -52,6 +52,9 @@ public class BluetoothLeService extends Service {
     private static final int STATE_CONNECTING = 1;
     private static final int STATE_CONNECTED = 2;
 
+    public final static String ACTION_DISCARD_COUNT =
+            "DPP_ACTION_DATA_DISCARD";
+
     public final static String ACTION_GATT_CONNECTED =
             "com.example.bluetooth.le.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED =
@@ -71,8 +74,12 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_TEMP";
     public final static String ACTION_DATA_ACC =
             "com.example.bluetooth.le.ACTION_DATA_ACC";
-    public final static String ACTION_DATA_DISCARD =
-            "DPP_ACTION_DATA_DISCARD";
+
+    public final static String ACTION_DATA_ALL =
+            "com.example.bluetooth.le.ACTION_DATA_ALL";
+
+
+
 
 
     public final static UUID UUID_HEART_RATE_MEASUREMENT =
@@ -223,44 +230,52 @@ public class BluetoothLeService extends Service {
             }
 
         }
-        if(otherData.trim().length()>0){
+        otherData=otherData.trim();
+        if(otherData.length()>0){
             //TODO: clean this code later;
+
+            Intent intent= new Intent(ACTION_DATA_ALL);
+            intent.putExtra(EXTRA_DATA, otherData);
+            sendBroadcast(intent);
 
             String []dataArray=otherData.split(",");
             try {
                 float temp = Float.parseFloat(dataArray[0].trim());
-                Intent intent= new Intent(ACTION_DATA_TEMP);
+                intent= new Intent(ACTION_DATA_TEMP);
                 intent.putExtra(EXTRA_DATA, temp);
                 sendBroadcast(intent);
             }catch (NumberFormatException ex){
                 sendDiscardCount();
-                Log.d("DPP","Temp exception"+ex.getMessage());
+                Log.d("DPP","Temp exception "+ex.getMessage());
             }catch (IndexOutOfBoundsException ex){
-                Log.d("DPP","Temp exception"+ex.getMessage());
+                sendDiscardCount();
+                Log.d("DPP","Temp exception "+ex.getMessage());
             }
 
             try {
                 int co = Integer.parseInt(dataArray[1].trim());
-                Intent intent= new Intent(ACTION_DATA_CO);
+                intent= new Intent(ACTION_DATA_CO);
                 intent.putExtra(EXTRA_DATA, co);
                 sendBroadcast(intent);
             }catch (NumberFormatException ex){
                 sendDiscardCount();
-                Log.d("DPP","CO exception"+ex.getMessage());
+                Log.d("DPP","CO exception "+ex.getMessage());
             }catch (IndexOutOfBoundsException ex){
-                Log.d("DPP","CO exception"+ex.getMessage());
+                sendDiscardCount();
+                Log.d("DPP","CO exception "+ex.getMessage());
             }
 
             try {
                 int co2 = Integer.parseInt(dataArray[2].trim());
-                Intent intent= new Intent(ACTION_DATA_CO2);
+                intent= new Intent(ACTION_DATA_CO2);
                 intent.putExtra(EXTRA_DATA, co2);
                 sendBroadcast(intent);
             }catch (NumberFormatException ex){
                 sendDiscardCount();
-                Log.d("DPP","Co2 exception"+ex.getMessage());
+                Log.d("DPP","Co2 exception "+ex.getMessage());
             }catch (IndexOutOfBoundsException ex){
-                Log.d("DPP","Co2 exception"+ex.getMessage());
+                sendDiscardCount();
+                Log.d("DPP","Co2 exception "+ex.getMessage());
             }
         }
         //sendBroadcast(intent);
@@ -268,7 +283,7 @@ public class BluetoothLeService extends Service {
 
     public void sendDiscardCount(){
         discardCount++;
-        Intent intent= new Intent(ACTION_DATA_DISCARD);
+        Intent intent= new Intent(ACTION_DISCARD_COUNT);
         intent.putExtra(EXTRA_DATA, discardCount);
         sendBroadcast(intent);
     }

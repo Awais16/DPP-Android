@@ -122,6 +122,15 @@ public class DppGraphs implements OnChartValueSelectedListener{
         });
     }
 
+    public void add3Gases(final float co, final float co2, final float temp){
+        view.post(new Runnable() {
+            @Override
+            public void run() {
+                add3Entries(co,co2,temp);
+            }
+        });
+    }
+
     private void addEntry(float x,String label,int color){
         LineData data = xleroChart.getData();
         if (data != null) {
@@ -140,6 +149,14 @@ public class DppGraphs implements OnChartValueSelectedListener{
             // limit the number of visible entries
             xleroChart.setVisibleXRangeMaximum(15);
             xleroChart.moveViewToX(data.getXValCount() - 7);
+
+            if(data.getXValCount()>5000){
+                //Toast.makeText(ctx,"clearing boom!",Toast.LENGTH_LONG).show();
+                xleroChart.clear();
+                LineData newData = new LineData();
+                data.setValueTextColor(Color.WHITE);
+                xleroChart.setData(newData);
+            }
         }
     }
 
@@ -182,6 +199,64 @@ public class DppGraphs implements OnChartValueSelectedListener{
             xleroChart.moveViewToX(data.getXValCount() - 7);
             // this automatically refreshes the chart (calls invalidate())
             //xleroChart.moveViewTo(data.getXValCount()-7, 55f, YAxis.AxisDependency.LEFT);
+
+            if(data.getXValCount()>5000){
+                //Toast.makeText(ctx,"clearing boom!",Toast.LENGTH_LONG).show();
+                xleroChart.clear();
+                LineData newData = new LineData();
+                data.setValueTextColor(Color.WHITE);
+                xleroChart.setData(newData);
+            }
+
+        }
+    }
+
+    private void add3Entries(float co,float co2,float temp) {
+        LineData data = xleroChart.getData();
+        if (data != null) {
+            LineDataSet setX = data.getDataSetByIndex(0);
+            // set.addEntry(...); // can be called as well
+
+            LineDataSet setY=data.getDataSetByIndex(1);
+            LineDataSet setZ=data.getDataSetByIndex(2);
+            if (setX == null || setY ==null) {
+                setX=createSet(Color.RED, "C0");
+                setY=createSet(Color.GREEN,"CO2");
+                setZ=createSet(Color.BLUE, "Temperature");
+                data.addDataSet(setX);
+                data.addDataSet(setY);
+                data.addDataSet(setZ);
+            }
+
+            // add a new x-value first
+            Date trialTime = new Date();
+            calendar.setTime(trialTime);
+            data.addXValue(calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND));
+            data.addEntry(new Entry(co, setX.getEntryCount()), 0);
+            data.addEntry(new Entry(co2, setY.getEntryCount()), 1);
+            data.addEntry(new Entry(temp, setZ.getEntryCount()), 2);
+
+            // let the chart know it's data has changed
+            xleroChart.notifyDataSetChanged();
+
+            // limit the number of visible entries
+            xleroChart.setVisibleXRangeMaximum(20);
+            // mChart.setVisibleYRange(30, AxisDependency.LEFT);
+
+            // move to the latest entry
+
+            xleroChart.moveViewToX(data.getXValCount() - 10);
+            // this automatically refreshes the chart (calls invalidate())
+            //xleroChart.moveViewTo(data.getXValCount()-7, 55f, YAxis.AxisDependency.LEFT);
+
+            if(data.getXValCount()>5000){
+                //Toast.makeText(ctx,"clearing boom!",Toast.LENGTH_LONG).show();
+                xleroChart.clear();
+                LineData newData = new LineData();
+                data.setValueTextColor(Color.WHITE);
+                xleroChart.setData(newData);
+            }
+
         }
     }
 

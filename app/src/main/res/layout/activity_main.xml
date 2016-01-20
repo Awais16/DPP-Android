@@ -10,11 +10,9 @@
         android:layout_height="fill_parent" android:orientation="vertical">
 
 
-
         <Button
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:text="Start Recording" android:id="@+id/bt_start"/>
-
+            android:layout_height="wrap_content" android:text="Start Recording" android:id="@+id/bt_start" android:enabled="false"/>
 
         <TextView
             android:layout_width="match_parent"
@@ -28,11 +26,10 @@
             android:text="Junk Discarded: 0"
             android:id="@+id/tv_discardCount" />
 
-
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/chart_co2"
             android:layout_width="match_parent"
-            android:layout_height="300dp" />
+            android:layout_height="400dp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -42,7 +39,7 @@
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/chart_co"
             android:layout_width="match_parent"
-            android:layout_height="300dp" />
+            android:layout_height="400dp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -50,20 +47,30 @@
             android:text="CO" android:id="@+id/tv_co"/>
 
 
-        <com.github.mikephil.charting.charts.BarChart
-            android:id="@+id/temp_chart"
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/chart_temp"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="400dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
-            android:text="@string/labelTempChart" />
+            android:text="@string/labelTempChart" android:id="@+id/tv_temp"/>
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/chart_compare"
+            android:layout_width="match_parent"
+            android:layout_height="500dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
+            android:text="Comparison" android:id="@+id/tv_compare"/>
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/chart_acceleration"
             android:layout_width="match_parent"
-            android:layout_height="300dp" />
+            android:layout_height="200dp" />
 
         <TextView
             android:layout_width="wrap_content"

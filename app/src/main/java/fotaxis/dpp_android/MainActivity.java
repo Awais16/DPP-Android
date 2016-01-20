@@ -27,16 +27,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ExpandableListView;
-import android.widget.SimpleExpandableListAdapter;
+
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.highlight.Highlight;
-import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
-
 import java.util.ArrayList;
-import java.util.HashMap;
+
 import java.util.List;
 
 import butterknife.Bind;
@@ -46,9 +42,12 @@ public class MainActivity extends AppCompatActivity {
 
     private BluetoothManager bluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
+
     private DppGraphs dppAcceleroGraph;
     private DppGraphs dppCOGraph;
     private DppGraphs dppCO2Graph;
+    private DppGraphs dppTempGraph;
+    private DppGraphs dppComparisonGraph;
 
     private BluetoothDevice btDevice;
 
@@ -63,7 +62,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Bind(R.id.tv_discardCount) TextView tv_discardCount;
     @Bind(R.id.tv_acceleration) TextView tv_acceleration;
-
+    @Bind(R.id.tv_co2) TextView tv_co2;
+    @Bind(R.id.tv_co) TextView tv_co;
+    @Bind(R.id.tv_temp) TextView tv_temp;
+    @Bind(R.id.bt_start) Button bt_start;
+    @Bind(R.id.tv_compare) TextView tv_compare;
 
     // Stops scanning after 10 seconds.
     private static final long SCAN_PERIOD = 10000;
@@ -134,6 +137,14 @@ public class MainActivity extends AppCompatActivity {
         dppCOGraph.setView(findViewById(android.R.id.content));
         dppCOGraph.setXleroLineChart(270f,600f,R.id.chart_co);
 
+        dppTempGraph= new DppGraphs(getApplication());
+        dppTempGraph.setView(findViewById(android.R.id.content));
+        dppTempGraph.setXleroLineChart(20f,40f,R.id.chart_temp);
+
+        dppComparisonGraph= new DppGraphs(getApplication());
+        dppComparisonGraph.setView(findViewById(android.R.id.content));
+        dppComparisonGraph.setXleroLineChart(20f,2200f,R.id.chart_compare);
+
 
         //dppGraph.feedMultiple(this);
         bluetoothManager=(BluetoothManager) getSystemService(this.BLUETOOTH_SERVICE);
@@ -147,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
         //mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
         //mGattServicesList.setOnChildClickListener(servicesListClickListner);
 
-        Button bt_start= (Button) findViewById(R.id.bt_start);
+
 
         /*
         Button bt_feed= (Button) findViewById(R.id.bt_feed);
@@ -164,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
                 /*for(BluetoothGattCharacteristic chars:notificationChars){
                     listenToCharacteristic(chars);
                 }*/
-                if(mBluetoothLeService!=null) {
+                if(mConnected && mBluetoothLeService!=null) {
                     listenToCharacteristic(notificationChars.get(1));
                     //i++; //wtf? why its listening to all three now
                 }else{
@@ -256,7 +267,6 @@ public class MainActivity extends AppCompatActivity {
         //noinspection SimplifiableIfStatement
         switch (id){
             case R.id.action_settings:
-
                 break;
             case R.id.action_scan:
                  enableBLE();
@@ -290,13 +300,6 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private boolean mConnected;
-    // Handles various events fired by the Service.
-    // ACTION_GATT_CONNECTED: connected to a GATT server.
-    // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
-    // ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
-    // ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
-    //                        or notification operations.
-
 
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
@@ -306,28 +309,42 @@ public class MainActivity extends AppCompatActivity {
                 mConnected = true;
                 //updateConnectionState(R.string.connected);
                 tv_status.setText("Connected to:" + btDevice.getName() + "(" + btDevice.getAddress().toString() + ")");
+                bt_start.setEnabled(true);
                 invalidateOptionsMenu();
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
                 mConnected = false;
                 //updateConnectionState(R.string.disconnected);
+                bt_start.setEnabled(false);
                 tv_status.setText("Disconnected from:" + btDevice.getName() + "(" + btDevice.getAddress().toString() + ")");
                 invalidateOptionsMenu();
                 //clearUI();
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 // Show all the supported services and characteristics on the user interface.
                 displayGattServices(mBluetoothLeService.getSupportedGattServices());
-            } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                //displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
-                debug("data avail="+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+            } else if(BluetoothLeService.ACTION_DATA_ALL.equals(action)){
+                String acc=intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                tv_compare.setText(acc);
+                try{
+                    String []datArra=acc.split(",");
+                    float temp=Float.parseFloat(datArra[0]);
+                    float co=Float.parseFloat(datArra[1]);
+                    float co2=Float.parseFloat(datArra[2]);
+                    dppComparisonGraph.add3Gases(co,co2,temp);
+                }catch (Exception ex){
+
+                }
             }else if(BluetoothLeService.ACTION_DATA_CO2.equals(action)){
                 int co2=intent.getIntExtra(BluetoothLeService.EXTRA_DATA, -1);
-                dppCO2Graph.addGasEntry(co2,"CO2 ("+co2+")",Color.GREEN);
+                dppCO2Graph.addGasEntry(co2,"CO2",Color.GREEN);
+                tv_co2.setText("CO2 (" + co2 + ")");
             }else if(BluetoothLeService.ACTION_DATA_CO.equals(action)){
                 int co=intent.getIntExtra(BluetoothLeService.EXTRA_DATA,-1);
-                dppCOGraph.addGasEntry(co,"CO2 ("+co+")",Color.RED);
+                dppCOGraph.addGasEntry(co,"CO",Color.RED);
+                tv_co.setText("CO ("+co+")");
             }else if(BluetoothLeService.ACTION_DATA_TEMP.equals(action)){
                 float temp=intent.getFloatExtra(BluetoothLeService.EXTRA_DATA, -1);
-                debug("temp="+temp);
+                dppTempGraph.addGasEntry(temp,"Temperature (Degrees C)",Color.BLUE);
+                tv_temp.setText("Temperature ("+temp+") c");
             }else if(BluetoothLeService.ACTION_DATA_ACC.equals(action)){
                 String acc=intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                 tv_acceleration.setText("Acceleration("+acc+")");
@@ -335,9 +352,9 @@ public class MainActivity extends AppCompatActivity {
                 int x=Integer.parseInt(dataArr[0]);
                 int y=Integer.parseInt(dataArr[1]);
                 dppAcceleroGraph.addXleroEntry(x,y);
-            }else if(BluetoothLeService.ACTION_DATA_DISCARD.equals(action)){
+            }else if(BluetoothLeService.ACTION_DISCARD_COUNT.equals(action)){
                 long discardCount=intent.getLongExtra(BluetoothLeService.EXTRA_DATA, 0);
-                tv_discardCount.setText("Junk Discarded: "+discardCount);
+                tv_discardCount.setText("Junk discarded: ~" + discardCount);
             }
 
         }
@@ -350,65 +367,6 @@ public class MainActivity extends AppCompatActivity {
     // on the UI.
     private void displayGattServices(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
-        /*String uuid = null;
-        String unknownServiceString = getResources().getString(R.string.unknown_service);
-        String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
-
-
-
-        ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
-        ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
-                = new ArrayList<ArrayList<HashMap<String, String>>>();
-        mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
-
-        // Loops through available GATT Services.
-        for (BluetoothGattService gattService : gattServices) {
-
-            HashMap<String, String> currentServiceData = new HashMap<String, String>();
-            uuid = gattService.getUuid().toString();
-
-            debug("Service:"+SampleGattAttributes.lookup(uuid, uuid));
-
-            currentServiceData.put(
-                    LIST_NAME, SampleGattAttributes.lookup(uuid, unknownServiceString));
-            currentServiceData.put(LIST_UUID, uuid);
-            gattServiceData.add(currentServiceData);
-
-            ArrayList<HashMap<String, String>> gattCharacteristicGroupData =
-                    new ArrayList<HashMap<String, String>>();
-            List<BluetoothGattCharacteristic> gattCharacteristics =
-                    gattService.getCharacteristics();
-            ArrayList<BluetoothGattCharacteristic> charas =
-                    new ArrayList<BluetoothGattCharacteristic>();
-
-            // Loops through available Characteristics.
-            for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
-                charas.add(gattCharacteristic);
-                HashMap<String, String> currentCharaData = new HashMap<String, String>();
-                uuid = gattCharacteristic.getUuid().toString();
-                currentCharaData.put(LIST_NAME, SampleGattAttributes.lookup(uuid, unknownCharaString));
-                debug("Char:" + SampleGattAttributes.lookup(uuid, uuid));
-                currentCharaData.put(LIST_UUID, uuid);
-                gattCharacteristicGroupData.add(currentCharaData);
-            }
-            mGattCharacteristics.add(charas);
-            gattCharacteristicData.add(gattCharacteristicGroupData);
-        }
-
-        SimpleExpandableListAdapter gattServiceAdapter = new SimpleExpandableListAdapter(
-                this,
-                gattServiceData,
-                android.R.layout.simple_expandable_list_item_2,
-                new String[] {LIST_NAME, LIST_UUID},
-                new int[] { android.R.id.text1, android.R.id.text2 },
-                gattCharacteristicData,
-                android.R.layout.simple_expandable_list_item_2,
-                new String[] {LIST_NAME, LIST_UUID},
-                new int[] { android.R.id.text1, android.R.id.text2 }
-        );
-        mGattServicesList.setAdapter(gattServiceAdapter);
-        */
-
         notificationChars = new ArrayList<BluetoothGattCharacteristic>(3);
 
         for (BluetoothGattService gattService : gattServices) {
@@ -437,17 +395,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void listenToCharacteristic(BluetoothGattCharacteristic characteristic) {
         final int charaProp = characteristic.getProperties();
-        /*
-        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
-            // If there is an active notification on a characteristic, clear
-            // it first so it doesn't update the data field on the user interface.
-            if (mNotifyCharacteristic != null) {
-                mBluetoothLeService.setCharacteristicNotification(
-                        mNotifyCharacteristic, false);
-                mNotifyCharacteristic = null;
-            }
-            mBluetoothLeService.readCharacteristic(characteristic);
-        }*/
 
 
         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
@@ -467,41 +414,11 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_TEMP);
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_ACC);
 
+        intentFilter.addAction(BluetoothLeService.ACTION_DISCARD_COUNT);
+        intentFilter.addAction(BluetoothLeService.ACTION_DATA_ALL);
+
         return intentFilter;
     }
-
-    /*
-    private final ExpandableListView.OnChildClickListener servicesListClickListner =
-            new ExpandableListView.OnChildClickListener() {
-                @Override
-                public boolean onChildClick(ExpandableListView parent, View v, int groupPosition,
-                                            int childPosition, long id) {
-                    if (mGattCharacteristics != null) {
-                        final BluetoothGattCharacteristic characteristic =
-                                mGattCharacteristics.get(groupPosition).get(childPosition);
-                        final int charaProp = characteristic.getProperties();
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
-                            // If there is an active notification on a characteristic, clear
-                            // it first so it doesn't update the data field on the user interface.
-                            if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(
-                                        mNotifyCharacteristic, false);
-                                mNotifyCharacteristic = null;
-                            }
-                            mBluetoothLeService.readCharacteristic(characteristic);
-                        }
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-                            mNotifyCharacteristic = characteristic;
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    characteristic, true);
-                        }
-                        return true;
-                    }
-                    return false;
-                }
-            };
-
-    */
 
     @Override
     protected void onResume() {
