@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -30,15 +31,24 @@ import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import butterknife.Bind;
+import butterknife.ButterKnife;
 
 public class MainActivity extends AppCompatActivity {
 
     private BluetoothManager bluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
-    private DppGraphs dppGraph;
+    private DppGraphs dppAcceleroGraph;
+    private DppGraphs dppCOGraph;
+    private DppGraphs dppCO2Graph;
 
     private BluetoothDevice btDevice;
 
@@ -50,6 +60,10 @@ public class MainActivity extends AppCompatActivity {
     private Handler mHandler;
 
     TextView tv_status;
+
+    @Bind(R.id.tv_discardCount) TextView tv_discardCount;
+    @Bind(R.id.tv_acceleration) TextView tv_acceleration;
+
 
     // Stops scanning after 10 seconds.
     private static final long SCAN_PERIOD = 10000;
@@ -88,7 +102,6 @@ public class MainActivity extends AppCompatActivity {
                 debug(btDeviceName);
                 btDevice=device;
                 mBluetoothAdapter.stopLeScan(this);
-
                 connectToBTNode();
             }
         }
@@ -105,12 +118,22 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
 
         tv_status=(TextView)findViewById(R.id.tv_status);
 
-        dppGraph= new DppGraphs(getApplication());
-        dppGraph.setView(findViewById(android.R.id.content));
-        dppGraph.setXleroLineChart();
+        dppAcceleroGraph= new DppGraphs(getApplication());
+        dppAcceleroGraph.setView(findViewById(android.R.id.content));
+        dppAcceleroGraph.setXleroLineChart(80f,200f,R.id.chart_acceleration);
+
+        dppCO2Graph= new DppGraphs(getApplication());
+        dppCO2Graph.setView(findViewById(android.R.id.content));
+        dppCO2Graph.setXleroLineChart(600f,3000f,R.id.chart_co2);
+
+        dppCOGraph= new DppGraphs(getApplication());
+        dppCOGraph.setView(findViewById(android.R.id.content));
+        dppCOGraph.setXleroLineChart(270f,600f,R.id.chart_co);
+
 
         //dppGraph.feedMultiple(this);
         bluetoothManager=(BluetoothManager) getSystemService(this.BLUETOOTH_SERVICE);
@@ -121,10 +144,19 @@ public class MainActivity extends AppCompatActivity {
 
         //for blue
 
-        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
+        //mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
         //mGattServicesList.setOnChildClickListener(servicesListClickListner);
 
         Button bt_start= (Button) findViewById(R.id.bt_start);
+
+        /*
+        Button bt_feed= (Button) findViewById(R.id.bt_feed);
+        bt_feed.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dppGraph.feedMultiple(MainActivity.this);
+            }
+        });*/
 
         bt_start.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -132,9 +164,12 @@ public class MainActivity extends AppCompatActivity {
                 /*for(BluetoothGattCharacteristic chars:notificationChars){
                     listenToCharacteristic(chars);
                 }*/
-
-                listenToCharacteristic(notificationChars.get(i));
-                i++; //wtf? why its listening to all three now
+                if(mBluetoothLeService!=null) {
+                    listenToCharacteristic(notificationChars.get(1));
+                    //i++; //wtf? why its listening to all three now
+                }else{
+                   Toast.makeText(getApplicationContext(),"Connect to sensor node first",Toast.LENGTH_LONG).show();
+                }
             }
         });
     }
@@ -261,6 +296,8 @@ public class MainActivity extends AppCompatActivity {
     // ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
     // ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
     //                        or notification operations.
+
+
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -283,12 +320,26 @@ public class MainActivity extends AppCompatActivity {
                 //displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 debug("data avail="+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
             }else if(BluetoothLeService.ACTION_DATA_CO2.equals(action)){
-                debug("co2="+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                int co2=intent.getIntExtra(BluetoothLeService.EXTRA_DATA, -1);
+                dppCO2Graph.addGasEntry(co2,"CO2 ("+co2+")",Color.GREEN);
             }else if(BluetoothLeService.ACTION_DATA_CO.equals(action)){
-                debug("co="+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                int co=intent.getIntExtra(BluetoothLeService.EXTRA_DATA,-1);
+                dppCOGraph.addGasEntry(co,"CO2 ("+co+")",Color.RED);
             }else if(BluetoothLeService.ACTION_DATA_TEMP.equals(action)){
-                debug("temp="+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                float temp=intent.getFloatExtra(BluetoothLeService.EXTRA_DATA, -1);
+                debug("temp="+temp);
+            }else if(BluetoothLeService.ACTION_DATA_ACC.equals(action)){
+                String acc=intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                tv_acceleration.setText("Acceleration("+acc+")");
+                String []dataArr=acc.split(",");
+                int x=Integer.parseInt(dataArr[0]);
+                int y=Integer.parseInt(dataArr[1]);
+                dppAcceleroGraph.addXleroEntry(x,y);
+            }else if(BluetoothLeService.ACTION_DATA_DISCARD.equals(action)){
+                long discardCount=intent.getLongExtra(BluetoothLeService.EXTRA_DATA, 0);
+                tv_discardCount.setText("Junk Discarded: "+discardCount);
             }
+
         }
     };
 
@@ -471,8 +522,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unbindService(mServiceConnection);
-        mBluetoothLeService = null;
+        if(mBluetoothLeService!=null){
+            unbindService(mServiceConnection);
+            mBluetoothLeService = null;
+        }
+
     }
 
 }

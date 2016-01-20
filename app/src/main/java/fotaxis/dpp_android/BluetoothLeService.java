@@ -71,6 +71,8 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_TEMP";
     public final static String ACTION_DATA_ACC =
             "com.example.bluetooth.le.ACTION_DATA_ACC";
+    public final static String ACTION_DATA_DISCARD =
+            "DPP_ACTION_DATA_DISCARD";
 
 
     public final static UUID UUID_HEART_RATE_MEASUREMENT =
@@ -141,9 +143,21 @@ public class BluetoothLeService extends Service {
         sendBroadcast(intent);
     }
 
+    StringBuilder sb;
+
+    @Override
+    public void onCreate() {
+        sb=new StringBuilder();
+        super.onCreate();
+    }
+
+    long discardCount=0;
+
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
-        final Intent intent = new Intent(action);
+
+        String acceleration="";
+        String otherData="";
 
         // This is special handling for the Heart Rate Measurement profile.  Data parsing is
         // carried out as per profile specifications:
@@ -160,11 +174,32 @@ public class BluetoothLeService extends Service {
             }
             final int heartRate = characteristic.getIntValue(format, 1);
             Log.d(TAG, String.format("Received heart rate: %d", heartRate));
-            intent.putExtra(EXTRA_DATA, String.valueOf(heartRate));
-        } else if(SampleGattAttributes.SENSOR_DATA_CO2.equals(characteristic.getUuid().toString())||SampleGattAttributes.SENSOR_DATA_CO.equals(characteristic.getUuid().toString())){
+        //    intent.putExtra(EXTRA_DATA, String.valueOf(heartRate));
+        } else if(SampleGattAttributes.SENSOR_DATA_CO2.equals(characteristic.getUuid().toString())){
             //String val=characteristic.getStringValue(0);
-            int val= characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32,0);
-            intent.putExtra(EXTRA_DATA, val+"");
+            //int val= characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32,0);
+            //intent.putExtra(EXTRA_DATA, val+"");
+
+
+            final byte[] data = characteristic.getValue();
+            if (data != null && data.length > 0) {
+                final StringBuilder stringBuilder = new StringBuilder(data.length);
+
+                for(byte byteChar : data) {
+                    stringBuilder.append((char) byteChar);
+                }
+                sb.append(stringBuilder.toString());
+                if(sb.length()>30){
+                    //do string operation you already have data;
+                    acceleration=parseAccleration();
+                    otherData=parseOtherData();
+                }
+
+                if(sb.length()>50){ //clear if too much junk is accomulated
+                    sb.delete(0, sb.length());
+                }
+
+            }
         } else {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();
@@ -172,10 +207,104 @@ public class BluetoothLeService extends Service {
                 final StringBuilder stringBuilder = new StringBuilder(data.length);
                 for(byte byteChar : data)
                     stringBuilder.append(String.format("%02X ", byteChar));
-                intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+                //intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
             }
         }
+
+
+        if(acceleration.trim().length()>0){
+            if(acceleration.trim().length()==7){
+                //it can't be more than 7, discard junk
+                Intent intent= new Intent(ACTION_DATA_ACC);
+                intent.putExtra(EXTRA_DATA, acceleration);
+                sendBroadcast(intent);
+            }else{
+                sendDiscardCount();
+            }
+
+        }
+        if(otherData.trim().length()>0){
+            //TODO: clean this code later;
+
+            String []dataArray=otherData.split(",");
+            try {
+                float temp = Float.parseFloat(dataArray[0].trim());
+                Intent intent= new Intent(ACTION_DATA_TEMP);
+                intent.putExtra(EXTRA_DATA, temp);
+                sendBroadcast(intent);
+            }catch (NumberFormatException ex){
+                sendDiscardCount();
+                Log.d("DPP","Temp exception"+ex.getMessage());
+            }catch (IndexOutOfBoundsException ex){
+                Log.d("DPP","Temp exception"+ex.getMessage());
+            }
+
+            try {
+                int co = Integer.parseInt(dataArray[1].trim());
+                Intent intent= new Intent(ACTION_DATA_CO);
+                intent.putExtra(EXTRA_DATA, co);
+                sendBroadcast(intent);
+            }catch (NumberFormatException ex){
+                sendDiscardCount();
+                Log.d("DPP","CO exception"+ex.getMessage());
+            }catch (IndexOutOfBoundsException ex){
+                Log.d("DPP","CO exception"+ex.getMessage());
+            }
+
+            try {
+                int co2 = Integer.parseInt(dataArray[2].trim());
+                Intent intent= new Intent(ACTION_DATA_CO2);
+                intent.putExtra(EXTRA_DATA, co2);
+                sendBroadcast(intent);
+            }catch (NumberFormatException ex){
+                sendDiscardCount();
+                Log.d("DPP","Co2 exception"+ex.getMessage());
+            }catch (IndexOutOfBoundsException ex){
+                Log.d("DPP","Co2 exception"+ex.getMessage());
+            }
+        }
+        //sendBroadcast(intent);
+    }
+
+    public void sendDiscardCount(){
+        discardCount++;
+        Intent intent= new Intent(ACTION_DATA_DISCARD);
+        intent.putExtra(EXTRA_DATA, discardCount);
         sendBroadcast(intent);
+    }
+    public String parseOtherData(){
+        String otherData="";
+        int s=sb.indexOf("s");
+        int semi=sb.indexOf(";");
+        if(s>=0){
+            if(semi>s){
+                otherData=sb.substring(s+1,semi);
+                sb.delete(s,semi+1);
+            }else if(semi<s){
+                if(semi!=-1){
+                    sb.delete(semi,s);
+                }
+            }
+        }
+        return otherData;
+    }
+
+    public String parseAccleration(){
+        String acceleration="";
+        int a=sb.indexOf("a");
+        int semi=sb.indexOf("e");
+        if(a>=0){
+            if(semi>a){
+                //normal case;
+                acceleration=sb.substring(a+1,semi);
+                sb.delete(a,semi+1);
+            }else{
+                if(semi!=-1){
+                    sb.delete(semi,a);
+                }
+            }
+        }
+        return acceleration;
     }
 
     public class LocalBinder extends Binder {
@@ -321,20 +450,11 @@ public class BluetoothLeService extends Service {
             return;
         }
 
-
-
-        // This is specific to Heart Rate Measurement.
-        if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid())) {
-            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
-                    UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
-            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-            mBluetoothGatt.writeDescriptor(descriptor);
-        }
-
         if (SampleGattAttributes.SENSOR_DATA_CO2.equals(characteristic.getUuid().toString())
                 ||SampleGattAttributes.SENSOR_DATA_CO.equals(characteristic.getUuid().toString())
                 ||SampleGattAttributes.SENSOR_DATA_TEMPERATURE.equals(characteristic.getUuid().toString())
                 ||SampleGattAttributes.SENSOR_DATA_ACCE.equals(characteristic.getUuid().toString())) {
+
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
                     UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);

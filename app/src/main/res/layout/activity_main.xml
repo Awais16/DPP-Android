@@ -9,13 +9,12 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" android:orientation="vertical">
 
-        <ExpandableListView android:id="@+id/gatt_services_list"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:text="Start Recording" android:id="@+id/bt_start"/>
+
 
         <TextView
             android:layout_width="match_parent"
@@ -23,25 +22,33 @@
             android:text="Status:"
             android:id="@+id/tv_status" />
 
-        <com.github.mikephil.charting.charts.LineChart
-        android:id="@+id/accel_chart"
-        android:layout_width="match_parent"
-        android:layout_height="300dp" />
-
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
-            android:text="@string/labelXleroGraph" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Junk Discarded: 0"
+            android:id="@+id/tv_discardCount" />
+
 
         <com.github.mikephil.charting.charts.LineChart
-            android:id="@+id/gas_chart"
+            android:id="@+id/chart_co2"
             android:layout_width="match_parent"
             android:layout_height="300dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
-            android:text="@string/labelGasChart" />
+            android:text="CO2" android:id="@+id/tv_co2"/>
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/chart_co"
+            android:layout_width="match_parent"
+            android:layout_height="300dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
+            android:text="CO" android:id="@+id/tv_co"/>
+
 
         <com.github.mikephil.charting.charts.BarChart
             android:id="@+id/temp_chart"
@@ -52,6 +59,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
             android:text="@string/labelTempChart" />
+
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/chart_acceleration"
+            android:layout_width="match_parent"
+            android:layout_height="300dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_gravity="center_horizontal"
+            android:text="@string/labelXleroGraph" android:id="@+id/tv_acceleration"/>
 
 
     </LinearLayout>

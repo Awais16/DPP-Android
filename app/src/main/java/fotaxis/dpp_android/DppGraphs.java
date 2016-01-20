@@ -3,8 +3,10 @@ package fotaxis.dpp_android;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.view.View;
+import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -13,6 +15,8 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -23,7 +27,7 @@ import java.util.Random;
 /**
  * Created by awais on 30.09.15.
  */
-public class DppGraphs {
+public class DppGraphs implements OnChartValueSelectedListener{
 
     Context ctx;
     View view;
@@ -38,16 +42,14 @@ public class DppGraphs {
         this.view = view;
     }
 
-    public void setXleroLineChart(){
-        xleroChart=(LineChart)view.findViewById(R.id.accel_chart);
-
+    public void setXleroLineChart(float lowerLimit,float upperLimit,int id){
+        xleroChart=(LineChart)view.findViewById(id);
         // no description text
         xleroChart.setDescription("");
-        xleroChart.setNoDataTextDescription("Waiting for accelerometer data");
-
+        xleroChart.setNoDataTextDescription("No chart data available.");
+        xleroChart.setOnChartValueSelectedListener(this);
         // enable value highlighting
         //xleroChart.setHighlightEnabled(true);
-
         // enable touch gestures
         xleroChart.setTouchEnabled(true);
 
@@ -64,6 +66,10 @@ public class DppGraphs {
 
         LineData data = new LineData();
         data.setValueTextColor(Color.WHITE);
+
+        MyMarkerView mv = new MyMarkerView(ctx,R.layout.custom_marker_view);
+        // set the marker to the chart
+        xleroChart.setMarkerView(mv);
 
         // add empty data
         xleroChart.setData(data);
@@ -89,26 +95,52 @@ public class DppGraphs {
         YAxis leftAxis = xleroChart.getAxisLeft();
         leftAxis.setTypeface(tf);
         leftAxis.setTextColor(Color.WHITE);
-        leftAxis.setAxisMaxValue(80f);
-        leftAxis.setAxisMinValue(-30f);
+        leftAxis.setAxisMaxValue(upperLimit);
+        leftAxis.setAxisMinValue(lowerLimit);
         leftAxis.setStartAtZero(false);
         leftAxis.setDrawGridLines(true);
-
         YAxis rightAxis = xleroChart.getAxisRight();
         rightAxis.setEnabled(false);
-
     }
 
     public void addXleroEntry(final float x, final float y){
-
         //at the end of the event queue
         view.post(new Runnable() {
             @Override
             public void run() {
-                addXleroMeterEntry(x,y);
+                addXleroMeterEntry(x, y);
             }
         });
+    }
 
+    public void addGasEntry(final float x, final String label, final int color){
+        view.post(new Runnable() {
+            @Override
+            public void run() {
+                addEntry(x, label, color);
+            }
+        });
+    }
+
+    private void addEntry(float x,String label,int color){
+        LineData data = xleroChart.getData();
+        if (data != null) {
+            LineDataSet setX = data.getDataSetByIndex(0);
+            if (setX == null ) {
+                setX=createSet(color, label);
+                data.addDataSet(setX);
+            }
+            // add a new x-value first
+            Date trialTime = new Date();
+            calendar.setTime(trialTime);
+            data.addXValue(calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND));
+            data.addEntry(new Entry(x, setX.getEntryCount()), 0);
+            // let the chart know it's data has changed
+            xleroChart.notifyDataSetChanged();
+            // limit the number of visible entries
+            xleroChart.setVisibleXRangeMaximum(15);
+            xleroChart.moveViewToX(data.getXValCount() - 7);
+        }
     }
 
     private void addXleroMeterEntry(float x,float y) {
@@ -132,7 +164,7 @@ public class DppGraphs {
             // add a new x-value first
             Date trialTime = new Date();
             calendar.setTime(trialTime);
-            data.addXValue(calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND) + ":" + calendar.get(Calendar.MILLISECOND));
+            data.addXValue(calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND));
             data.addEntry(new Entry(x, setX.getEntryCount()), 0);
             data.addEntry(new Entry(y, setY.getEntryCount()), 1);
 //            data.addEntry(new Entry(z, setZ.getEntryCount()), 2);
@@ -142,12 +174,12 @@ public class DppGraphs {
             xleroChart.notifyDataSetChanged();
 
             // limit the number of visible entries
-            xleroChart.setVisibleXRangeMaximum(60);
+            xleroChart.setVisibleXRangeMaximum(15);
             // mChart.setVisibleYRange(30, AxisDependency.LEFT);
 
             // move to the latest entry
 
-            xleroChart.moveViewToX(data.getXValCount() - 121);
+            xleroChart.moveViewToX(data.getXValCount() - 7);
             // this automatically refreshes the chart (calls invalidate())
             //xleroChart.moveViewTo(data.getXValCount()-7, 55f, YAxis.AxisDependency.LEFT);
         }
@@ -166,7 +198,7 @@ public class DppGraphs {
         set.setHighLightColor(Color.rgb(244, 117, 117));
         set.setValueTextColor(Color.WHITE);
         set.setValueTextSize(5f);
-        set.setDrawValues(false);
+        set.setDrawValues(true);
         return set;
     }
 
@@ -198,4 +230,13 @@ public class DppGraphs {
     }
 
 
+    @Override
+    public void onValueSelected(Entry e, int dataSetIndex, Highlight h) {
+        Toast.makeText(ctx,e.getVal()+"",Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onNothingSelected() {
+
+    }
 }
