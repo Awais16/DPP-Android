@@ -284,7 +284,6 @@ public class DppGraphs implements OnChartValueSelectedListener{
             @Override
             public void run() {
                 for(int i = 0; i < 500; i++) {
-
                     act.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
