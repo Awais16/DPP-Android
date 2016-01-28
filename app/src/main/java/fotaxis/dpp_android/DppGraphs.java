@@ -266,8 +266,8 @@ public class DppGraphs implements OnChartValueSelectedListener{
         set.setAxisDependency(YAxis.AxisDependency.LEFT);
         set.setColor(color);
         set.setCircleColor(color);
-        set.setLineWidth(1f);
-        set.setCircleSize(2f);
+        set.setLineWidth(1.5f);
+        set.setCircleSize(3.5f);
         set.setFillAlpha(65);
         set.setFillColor(color);
         set.setHighLightColor(Color.rgb(244, 117, 117));

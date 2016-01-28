@@ -12,7 +12,7 @@
 
         <Button
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:text="Start Recording" android:id="@+id/bt_start" android:enabled="false"/>
+            android:layout_height="wrap_content" android:text="Start Capturing" android:id="@+id/bt_start" android:enabled="false"/>
 
         <TextView
             android:layout_width="match_parent"
@@ -25,6 +25,12 @@
             android:layout_height="wrap_content"
             android:text="Junk Discarded: 0"
             android:id="@+id/tv_discardCount" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Battery: --"
+            android:id="@+id/tv_battery" />
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/chart_co2"

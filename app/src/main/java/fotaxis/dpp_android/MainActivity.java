@@ -18,6 +18,8 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.Settings;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -31,8 +33,12 @@ import android.widget.ExpandableListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.FileWriter;
 import java.util.ArrayList;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 import butterknife.Bind;
@@ -49,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
     private DppGraphs dppTempGraph;
     private DppGraphs dppComparisonGraph;
 
+    Calendar calendar;
+
     private BluetoothDevice btDevice;
 
     private static int REQUEST_ENABLE_BT=1001;
@@ -58,7 +66,10 @@ public class MainActivity extends AppCompatActivity {
     private boolean mScanning;
     private Handler mHandler;
 
+    FileWriting file;
+
     TextView tv_status;
+    boolean fl_started=false;
 
     @Bind(R.id.tv_discardCount) TextView tv_discardCount;
     @Bind(R.id.tv_acceleration) TextView tv_acceleration;
@@ -67,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
     @Bind(R.id.tv_temp) TextView tv_temp;
     @Bind(R.id.bt_start) Button bt_start;
     @Bind(R.id.tv_compare) TextView tv_compare;
+    @Bind(R.id.tv_battery) TextView tv_battery;
 
     // Stops scanning after 10 seconds.
     private static final long SCAN_PERIOD = 10000;
@@ -123,6 +135,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
+        requestWriteExternalStoragePermission();
+        calendar = new GregorianCalendar();
+        file=new FileWriting();
+
         tv_status=(TextView)findViewById(R.id.tv_status);
 
         dppAcceleroGraph= new DppGraphs(getApplication());
@@ -153,22 +169,6 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-        //for blue
-
-        //mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
-        //mGattServicesList.setOnChildClickListener(servicesListClickListner);
-
-
-
-        /*
-        Button bt_feed= (Button) findViewById(R.id.bt_feed);
-        bt_feed.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dppGraph.feedMultiple(MainActivity.this);
-            }
-        });*/
-
         bt_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -176,7 +176,18 @@ public class MainActivity extends AppCompatActivity {
                     listenToCharacteristic(chars);
                 }*/
                 if(mConnected && mBluetoothLeService!=null) {
-                    listenToCharacteristic(notificationChars.get(1));
+                    if(fl_started){
+                        mBluetoothLeService.disconnect();
+                        fl_started=false;
+                        bt_start.setText("Start Capture");
+                        tv_battery.setText("Battery: --");
+                    }else{
+                        listenToCharacteristic(notificationChars.get(1));
+                        fl_started=true;
+                        bt_start.setText("Stop and Disconnect");
+
+                    }
+
                     //i++; //wtf? why its listening to all three now
                 }else{
                    Toast.makeText(getApplicationContext(),"Connect to sensor node first",Toast.LENGTH_LONG).show();
@@ -218,9 +229,6 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
-
-
-
     public boolean isLocationEnabled() {
         int locationMode = 0;
         String locationProviders;
@@ -245,8 +253,21 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }else{
             //requestLocationPermission();
-            this.requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},REQUEST_PERMISSION_LOCATION);
+            this.requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION_LOCATION);
+
 //            scanLeDevice(true);
+        }
+    }
+
+    private void requestWriteExternalStoragePermission() {
+        boolean hasPermission = (ContextCompat.checkSelfPermission(MainActivity.this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
+        if (!hasPermission) {
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    101);
+        }else{
+            //alread have permission
         }
     }
 
@@ -267,6 +288,7 @@ public class MainActivity extends AppCompatActivity {
         //noinspection SimplifiableIfStatement
         switch (id){
             case R.id.action_settings:
+
                 break;
             case R.id.action_scan:
                  enableBLE();
@@ -324,14 +346,19 @@ public class MainActivity extends AppCompatActivity {
             } else if(BluetoothLeService.ACTION_DATA_ALL.equals(action)){
                 String acc=intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                 tv_compare.setText(acc);
+                tv_battery.setText("Battery: 100%");
                 try{
                     String []datArra=acc.split(",");
                     float temp=Float.parseFloat(datArra[0]);
                     float co=Float.parseFloat(datArra[1]);
                     float co2=Float.parseFloat(datArra[2]);
-                    dppComparisonGraph.add3Gases(co,co2,temp);
+                    dppComparisonGraph.add3Gases(co, co2, temp);
+                    Date trialTime = new Date();
+                    calendar.setTime(trialTime);
+                    //file.write(acc+","+calendar.get(Calendar.HOUR)+":"+calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND),true);
+                    file.write(acc+","+calendar.getTimeInMillis()+","+calendar.getTime(),true);
                 }catch (Exception ex){
-
+                        ex.printStackTrace();
                 }
             }else if(BluetoothLeService.ACTION_DATA_CO2.equals(action)){
                 int co2=intent.getIntExtra(BluetoothLeService.EXTRA_DATA, -1);

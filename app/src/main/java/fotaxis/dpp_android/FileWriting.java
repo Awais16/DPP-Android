@@ -25,10 +25,10 @@ public class FileWriting {
         //fos=new FileOutputStream[5];
 
         lineSeparator=System.getProperty("line.separator");
-        openFiles();
+        openFile();
     }
 
-    public void openFiles(){
+    public void openFile(){
         try {
 
             if(isExternalStorageWritable()){
@@ -54,7 +54,7 @@ public class FileWriting {
 
     }
 
-    private void write(String txt,boolean fl_false){
+    public void write(String txt,boolean fl_false){
         try {
             if(osw!=null){
                 osw.append(txt);
